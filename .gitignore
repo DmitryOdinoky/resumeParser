@@ -1,0 +1,1 @@
+# Python basics\n__pycache__/\n*.pyc\n\n# Virtual environment\nvenv/\n.venv/\nenv/\n\n# IDE settings\n.vscode/\n.idea/
