@@ -1,21 +1,49 @@
 # Python basics
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.coverage
+.pytest_cache/
 
 # Virtual environment
 venv/
 .venv/
 env/
+ENV/
 
 # IDE settings
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-# Input/Output
+# Input/Output directories
 input/
 output/
+temp/
 
 # Environment variables
 .env
 .env.*
 *.env
+
+# Logs
+*.log
+server.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project specific
+*.json
+!requirements*.json
