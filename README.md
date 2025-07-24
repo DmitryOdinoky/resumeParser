@@ -1,6 +1,6 @@
 # Resume Parser API
 
-This project is a FastAPI application that parses resumes from PDF files and returns a structured JSON output using the Google Gemini API.
+This project is a FastAPI application that parses resumes from PDF files and returns a structured JSON output using the Google Gemini API. It supports both local deployment and Docker containerization with MinIO object storage.
 
 ## Features
 
@@ -9,29 +9,176 @@ This project is a FastAPI application that parses resumes from PDF files and ret
 -   **AI-Powered Parsing**: Uses Google Gemini API to intelligently extract and structure resume information
 -   **Comprehensive Data Extraction**: Extracts personal information, education, experience, certifications, languages, skills, and references
 -   **Flexible Industry Classification**: No restrictions on industry types - supports any field
+-   **Cloud Storage**: MinIO integration for distributed file storage (Docker version)
 -   **Batch Processing**: Process multiple PDFs simultaneously
 -   **Comprehensive Testing**: Includes unified test suite with colored output and detailed reporting
+-   **Docker Support**: Ready-to-deploy containerized version with docker-compose
 
 ## Project Structure
 
 ```
 .
 ├── input/                        # Directory for test PDF files (gitignored)
-├── output/                       # Directory for JSON output (gitignored)
+├── output/                       # Directory for JSON output (gitignored)  
 ├── temp/                         # Temporary files directory (gitignored)
 ├── venv/                         # Python virtual environment (gitignored)
 ├── .env                          # For storing your API key (gitignored)
+├── .env.example                  # Environment variables template
 ├── .gitignore                    # Git ignore rules
-├── main.py                       # FastAPI application with OCR support
+├── main.py                       # FastAPI application with OCR and MinIO support
 ├── client.py                     # Single file test client
 ├── batch_client.py               # Batch processing test client
 ├── test_resume_parser.py         # Comprehensive testing suite
+├── Dockerfile                    # Docker container configuration
+├── docker-compose.yml            # Docker Compose with MinIO
+├── nginx.conf                    # Nginx configuration (optional)
 ├── server.log                    # Application logs (gitignored)
 ├── README.md                     # This file
 └── requirements.txt              # Python dependencies
 ```
 
-## Setup and Installation
+## Deployment Options
+
+This project supports two deployment methods:
+- **Local Development**: Direct Python installation for development and testing
+- **Docker Production**: Containerized deployment with MinIO object storage for production use
+
+### Option 1: Docker Deployment (Recommended for Production)
+
+**Prerequisites:**
+- Docker and Docker Compose installed on your system
+- At least 2GB RAM available for containers
+
+#### Quick Start
+
+1. **Clone the repository:**
+   ```bash
+   git clone git@github.com:DmitryOdinoky/resumeParser.git
+   cd resumeParser
+   ```
+
+2. **Switch to docker branch:**
+   ```bash
+   git checkout docker-version
+   ```
+
+3. **Configure environment:**
+   ```bash
+   cp .env.example .env
+   # Edit .env file with your Google API key
+   nano .env  # or use your preferred editor
+   ```
+
+4. **Deploy with Docker Compose:**
+   ```bash
+   # Start all services (MinIO + Resume Parser)
+   docker-compose up -d
+   
+   # Check service status
+   docker-compose ps
+   
+   # View logs
+   docker-compose logs -f resume-parser
+   ```
+
+#### Services Overview
+
+The Docker deployment includes:
+
+- **resume-parser** (Port 8000): Main FastAPI application
+- **minio** (Port 9000): Object storage for files
+- **minio-console** (Port 9001): MinIO web interface  
+- **nginx** (Port 80/443): Reverse proxy (optional, for production)
+
+#### Platform-Specific Instructions
+
+**Linux (Ubuntu/Debian):**
+```bash
+# Install Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER
+
+# Install Docker Compose
+sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+# Logout and login again, then deploy
+docker-compose up -d
+```
+
+**macOS:**
+```bash
+# Install Docker Desktop from https://docker.com/products/docker-desktop
+# Or using Homebrew:
+brew install --cask docker
+
+# Deploy the application
+docker-compose up -d
+```
+
+**Windows:**
+```powershell
+# Install Docker Desktop from https://docker.com/products/docker-desktop
+# Open PowerShell as Administrator and run:
+
+docker-compose up -d
+```
+
+#### Accessing Services
+
+- **API Documentation**: http://localhost:8000/docs
+- **Health Check**: http://localhost:8000/health
+- **MinIO Console**: http://localhost:9001 (admin/password123)
+- **File Upload**: POST http://localhost:8000/parse-resume/
+
+#### Environment Variables
+
+Edit `.env` file to configure:
+
+```bash
+# Required: Google Gemini API Key
+GOOGLE_API_KEY=your_google_api_key_here
+
+# MinIO Configuration (default values work for local development)
+MINIO_ROOT_USER=admin
+MINIO_ROOT_PASSWORD=password123
+
+# Application Settings
+APP_HOST=0.0.0.0
+APP_PORT=8000
+INPUT_BUCKET=input-resumes
+OUTPUT_BUCKET=output-json
+
+# Production Settings (uncomment for production)
+# MINIO_SECURE=true
+# NGINX_ENABLED=true
+```
+
+#### Docker Management Commands
+
+```bash
+# Start services
+docker-compose up -d
+
+# Stop services
+docker-compose down
+
+# View logs
+docker-compose logs -f [service-name]
+
+# Rebuild after code changes
+docker-compose build --no-cache
+docker-compose up -d
+
+# Access service shell
+docker-compose exec resume-parser bash
+
+# Clean up everything (removes data!)
+docker-compose down -v --remove-orphans
+```
+
+### Option 2: Local Development Setup
 
 1.  **Clone the repository:**
     ```bash
@@ -110,14 +257,81 @@ This project is a FastAPI application that parses resumes from PDF files and ret
         ```
     The scripts will process PDF(s) and save the JSON responses in the `output` directory.
 
-## API Endpoint
+## API Endpoints
 
 ### POST /parse-resume/
 
+Upload and parse a resume PDF file.
+
 -   **Request:**
-    -   `file`: A PDF file (supports both text-based and scanned PDFs).
+    -   `file`: A PDF file (supports both text-based and scanned PDFs)
+-   **Response (Docker with MinIO):**
+    ```json
+    {
+        "status": "success",
+        "file_id": "uuid-generated-id",
+        "original_filename": "resume.pdf",
+        "pdf_url": "http://localhost:9000/input-resumes/uuid_resume.pdf",
+        "json_url": "http://localhost:9000/output-json/uuid_resume.json",
+        "parsed_data": { /* structured resume data */ }
+    }
+    ```
+-   **Response (Local mode):**
+    ```json
+    {
+        "status": "success", 
+        "file_id": "uuid-generated-id",
+        "original_filename": "resume.pdf",
+        "parsed_data": { /* structured resume data */ },
+        "note": "MinIO storage not available - data returned inline only"
+    }
+    ```
+
+### GET /health
+
+Health check endpoint that shows system status.
+
 -   **Response:**
-    -   A JSON object with the parsed resume data.
+    ```json
+    {
+        "status": "healthy",
+        "minio_available": true,
+        "buckets": {
+            "input": "input-resumes",
+            "output": "output-json"
+        }
+    }
+    ```
+
+### GET /files/{bucket}
+
+List all files in a MinIO bucket (Docker version only).
+
+-   **Parameters:**
+    -   `bucket`: Either "input-resumes" or "output-json"
+-   **Response:**
+    ```json
+    {
+        "bucket": "input-resumes",
+        "files": [
+            {
+                "name": "uuid_resume.pdf",
+                "size": 1024576,
+                "last_modified": "2024-01-01T12:00:00Z",
+                "url": "http://localhost:9000/input-resumes/uuid_resume.pdf"
+            }
+        ]
+    }
+    ```
+
+### GET /download/{bucket}/{object_name}
+
+Download a file from MinIO storage (Docker version only).
+
+-   **Parameters:**
+    -   `bucket`: Either "input-resumes" or "output-json" 
+    -   `object_name`: The file name to download
+-   **Response:** File download with appropriate content-type headers
 
 ## JSON Output Structure
 
@@ -201,3 +415,130 @@ The API returns a comprehensive JSON object with the following structure:
 - Graceful fallback from text extraction to OCR
 - Validation error details for debugging
 - Server health checks in test suite
+
+## Docker Production Deployment
+
+For production deployment with SSL and domain configuration:
+
+1. **Create nginx.conf:**
+   ```bash
+   # Create nginx configuration for production
+   cat > nginx.conf << 'EOF'
+   events {
+       worker_connections 1024;
+   }
+   
+   http {
+       upstream resume-parser {
+           server resume-parser:8000;
+       }
+       
+       server {
+           listen 80;
+           server_name your-domain.com;
+           
+           location / {
+               proxy_pass http://resume-parser;
+               proxy_set_header Host $host;
+               proxy_set_header X-Real-IP $remote_addr;
+               proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+               proxy_set_header X-Forwarded-Proto $scheme;
+           }
+           
+           client_max_body_size 10M;
+       }
+   }
+   EOF
+   ```
+
+2. **Deploy with nginx:**
+   ```bash
+   docker-compose --profile production up -d
+   ```
+
+## Troubleshooting
+
+### Common Issues
+
+**Docker containers not starting:**
+```bash
+# Check Docker daemon
+sudo systemctl status docker
+
+# Check container logs
+docker-compose logs
+
+# Recreate containers
+docker-compose down && docker-compose up -d
+```
+
+**MinIO connection issues:**
+```bash
+# Check MinIO container status
+docker-compose ps minio
+
+# Check MinIO logs
+docker-compose logs minio
+
+# Restart MinIO
+docker-compose restart minio
+```
+
+**API returning 500 errors:**
+```bash
+# Check application logs
+docker-compose logs resume-parser
+
+# Common causes:
+# - Missing GOOGLE_API_KEY in .env
+# - Invalid Google API key
+# - OCR dependencies missing (should be in Docker image)
+```
+
+**File upload failures:**
+```bash
+# Check disk space
+df -h
+
+# Check MinIO bucket permissions
+docker-compose exec minio-init mc ls minio/
+```
+
+### Performance Tuning
+
+For high-volume processing:
+
+1. **Increase container resources:**
+   ```yaml
+   # In docker-compose.yml
+   resume-parser:
+     deploy:
+       resources:
+         limits:
+           cpus: '2.0'
+           memory: 4G
+   ```
+
+2. **Scale horizontally:**
+   ```bash
+   docker-compose up -d --scale resume-parser=3
+   ```
+
+### Security Considerations
+
+- Change default MinIO credentials in production
+- Use HTTPS in production (configure SSL certificates)
+- Implement API rate limiting
+- Regular security updates of base images
+- Network isolation using Docker networks
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Make your changes and test thoroughly
+4. Submit a pull request with detailed description
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

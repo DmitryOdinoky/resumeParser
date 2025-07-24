@@ -55,3 +55,5 @@ pdf2image==1.17.0
 pytesseract==0.3.13
 Pillow==11.1.0
 colorama==0.4.6
+minio==7.2.9
+python-magic==0.4.27
