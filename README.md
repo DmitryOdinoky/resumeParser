@@ -62,22 +62,31 @@ This project supports two deployment methods:
    git checkout docker-version
    ```
 
-3. **Configure environment:**
+3. **Set your Google API key and deploy:**
+   
+   **Option A: Direct environment variable (Recommended)**
+   ```bash
+   # Replace 'your_api_key_here' with your actual Google Gemini API key
+   GOOGLE_API_KEY=your_api_key_here docker-compose up -d
+   ```
+   
+   **Option B: Using .env file**
    ```bash
    cp .env.example .env
    # Edit .env file with your Google API key
    nano .env  # or use your preferred editor
+   docker-compose up -d
    ```
 
-4. **Deploy with Docker Compose:**
+4. **Verify deployment:**
    ```bash
-   # Start all services (MinIO + Resume Parser)
-   docker-compose up -d
-   
    # Check service status
    docker-compose ps
    
-   # View logs
+   # Test health endpoint
+   curl http://localhost:8000/health
+   
+   # View logs if needed
    docker-compose logs -f resume-parser
    ```
 
@@ -104,7 +113,8 @@ sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker
 sudo chmod +x /usr/local/bin/docker-compose
 
 # Logout and login again, then deploy
-docker-compose up -d
+git checkout docker-version
+GOOGLE_API_KEY=your_api_key_here docker-compose up -d
 ```
 
 **macOS:**
@@ -114,7 +124,8 @@ docker-compose up -d
 brew install --cask docker
 
 # Deploy the application
-docker-compose up -d
+git checkout docker-version
+GOOGLE_API_KEY=your_api_key_here docker-compose up -d
 ```
 
 **Windows:**
@@ -122,7 +133,8 @@ docker-compose up -d
 # Install Docker Desktop from https://docker.com/products/docker-desktop
 # Open PowerShell as Administrator and run:
 
-docker-compose up -d
+git checkout docker-version
+$env:GOOGLE_API_KEY="your_api_key_here"; docker-compose up -d
 ```
 
 #### Accessing Services
@@ -134,31 +146,52 @@ docker-compose up -d
 
 #### Environment Variables
 
-Edit `.env` file to configure:
+You can configure the application using either environment variables or a `.env` file:
 
+**Method 1: Direct environment variables (Recommended)**
 ```bash
-# Required: Google Gemini API Key
+# Set variables directly when running docker-compose
+GOOGLE_API_KEY=your_api_key_here \
+MINIO_ROOT_PASSWORD=your_secure_password123 \
+docker-compose up -d
+```
+
+**Method 2: Using .env file**
+```bash
+# Create .env file from template
+cp .env.example .env
+# Edit the file with your values
+```
+
+**Available Configuration Variables:**
+```bash
+# REQUIRED: Google Gemini API Key
+# Get your key from: https://makersuite.google.com/app/apikey
 GOOGLE_API_KEY=your_google_api_key_here
 
-# MinIO Configuration (default values work for local development)
-MINIO_ROOT_USER=admin
-MINIO_ROOT_PASSWORD=password123
+# MinIO Configuration
+MINIO_ROOT_USER=admin                    # Default: admin
+MINIO_ROOT_PASSWORD=password123          # Change for production!
 
 # Application Settings
-APP_HOST=0.0.0.0
-APP_PORT=8000
-INPUT_BUCKET=input-resumes
-OUTPUT_BUCKET=output-json
+APP_HOST=0.0.0.0                        # Default: 0.0.0.0
+APP_PORT=8000                           # Default: 8000
 
-# Production Settings (uncomment for production)
-# MINIO_SECURE=true
-# NGINX_ENABLED=true
+# Storage Buckets
+INPUT_BUCKET=input-resumes              # Default: input-resumes
+OUTPUT_BUCKET=output-json               # Default: output-json
+
+# Production Settings
+# MINIO_SECURE=true                     # Enable HTTPS for MinIO
 ```
 
 #### Docker Management Commands
 
 ```bash
-# Start services
+# Start services with environment variable
+GOOGLE_API_KEY=your_api_key_here docker-compose up -d
+
+# Start services (if using .env file)
 docker-compose up -d
 
 # Stop services
@@ -166,16 +199,21 @@ docker-compose down
 
 # View logs
 docker-compose logs -f [service-name]
+docker-compose logs -f resume-parser  # Application logs
+docker-compose logs -f minio          # MinIO storage logs
 
 # Rebuild after code changes
 docker-compose build --no-cache
-docker-compose up -d
+GOOGLE_API_KEY=your_api_key_here docker-compose up -d
 
 # Access service shell
 docker-compose exec resume-parser bash
 
 # Clean up everything (removes data!)
 docker-compose down -v --remove-orphans
+
+# Scale the application (multiple instances)
+GOOGLE_API_KEY=your_api_key_here docker-compose up -d --scale resume-parser=3
 ```
 
 ### Option 2: Local Development Setup
